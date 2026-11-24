@@ -25,6 +25,19 @@ import { watchers } from "./watchers"
 
 type InputSource = (reason: string, event?: Event) => ChangeSource
 
+type ChangeInput<Options, Key extends string> = {
+  reason: ReasonFor<Options, Key>
+  event?: Event | undefined
+  source?: ChangeSource
+  [extra: string]: unknown
+}
+
+type Change<Options, State extends object> = <Key extends keyof State & string>(
+  key: Key,
+  value: State[Key],
+  details: ChangeInput<Options, Key>
+) => boolean
+
 type LogContext = { id: string; label: string; options: () => unknown }
 
 function debug(
@@ -84,12 +97,8 @@ function changeFrom<Options, State extends object>(
   return <Key extends keyof State & string>(
     key: Key,
     value: State[Key],
-    details: {
-      reason: ReasonFor<Options, Key>
-      event?: Event | undefined
-      source?: ChangeSource
-      [extra: string]: unknown
-    }
+    details: ChangeInput<Options, Key>,
+    beforeWrite?: () => boolean
   ) => {
     if (changing.has(key) && sameValue(changing.get(key), value)) {
       return false
@@ -128,8 +137,14 @@ function changeFrom<Options, State extends object>(
             })
           }
         }
-        const askedInside = asked.get(key) !== ask
-        if (!callbackDetails.canceled && !isControlled && !askedInside) {
+        if (callbackDetails.canceled || asked.get(key) !== ask) {
+          return
+        }
+        if (beforeWrite?.() === false) {
+          callbackDetails.cancel()
+          return
+        }
+        if (!isControlled && asked.get(key) === ask) {
           store.set({ [key]: value } as unknown as Partial<State>)
         }
       })
@@ -244,4 +259,4 @@ function log(
   debug(context, key, value, details.reason, source)
 }
 
-export { changeFrom, commitFrom, log }
+export { changeFrom, commitFrom, log, type Change }

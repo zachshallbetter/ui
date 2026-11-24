@@ -2,7 +2,7 @@
 // screen reader caused it, read from `kernel/modality`. Details of a change no
 // event explains need only `kernel/details.ts`.
 import { sourceOf, trackInput } from "./modality"
-import { changeFrom, commitFrom } from "./change"
+import { changeFrom, commitFrom, type Change } from "./change"
 import {
   createDetails,
   resolveSource,
@@ -40,7 +40,8 @@ function createChange<Options, State extends object>(
   context: PrimitiveContext<Options, State, any>,
   source: (reason: string, event?: Event) => ChangeSource = inputSource()
 ) {
-  return changeFrom(context, source)
+  const change: Change<Options, State> = changeFrom(context, source)
+  return change
 }
 
 /**

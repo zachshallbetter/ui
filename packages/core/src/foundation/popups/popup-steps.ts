@@ -65,7 +65,8 @@ function createOpenSteps<
   // Fires `onOpenChange` and writes `open` unless controlled. False when refused.
   change: (
     open: boolean,
-    details: { reason: Reason; event?: Event; returnValue?: Result }
+    details: { reason: Reason; event?: Event; returnValue?: Result },
+    beforeWrite?: () => boolean
   ) => boolean
   // Leaving the page settles a pending `open()` with "unmount".
   onDestroy: (cleanup: () => void) => void
@@ -102,7 +103,7 @@ function createOpenSteps<
     // when it didn't. Returning without calling it keeps the popup open.
     close?: (
       request: HideRequest<Reason, Result> & { reason: Reason },
-      close: () => boolean
+      close: (beforeWrite?: () => boolean) => boolean
     ) => void
   }
 }) {
@@ -223,14 +224,14 @@ function createOpenSteps<
       return false
     }
     let closed = false
-    const close = () => {
+    const close = (beforeWrite?: () => boolean) => {
       requested = { reason, source: changeSource(reason, event), returnValue }
       popup.returnFocus(request.focus ?? config.returnFocus ?? true)
-      const changed = config.change(false, {
-        reason,
-        event,
-        ...(returnValue !== undefined && { returnValue }),
-      })
+      const changed = config.change(
+        false,
+        { reason, event, ...(returnValue !== undefined && { returnValue }) },
+        beforeWrite
+      )
       if (!changed) {
         popup.returnFocus(true)
         requested = undefined

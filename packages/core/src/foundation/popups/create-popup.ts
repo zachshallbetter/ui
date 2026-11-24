@@ -4,8 +4,9 @@
 // pattern needs and the code for it: placement, hover and focus opening, the
 // sheet. This file imports none of that, so a popup bundles only what its
 // preset names.
+import { changeFrom } from "../kernel/change"
 import { deriveFromOptions } from "../kernel/derive"
-import { createChange } from "../kernel/input-source"
+import { inputSource } from "../kernel/input-source"
 import { elements } from "../kernel/elements"
 import type { ChangeDetails } from "../kernel/details"
 import type {
@@ -150,7 +151,7 @@ type PopupRules = DismissRules & {
   /** Decides a close: call `close` to go on, or return without calling it to stay open. */
   close?: (
     request: { reason: string; event?: Event },
-    close: () => boolean
+    close: (beforeWrite?: () => boolean) => boolean
   ) => void
   /** What the content's `initialFocus` of `"auto"` prefers to its first focusable element, like an autofocused one. */
   preferredFocus?: () => HTMLElement | undefined
@@ -284,7 +285,7 @@ function createPopup<
   const { preset } = config
   const contentSlot = config.slot ?? "content"
   const triggerSlot = config.trigger ?? "trigger"
-  const change = createChange(context)
+  const change = changeFrom(context, inputSource())
 
   // The content part's latest props. Custom elements key parts by a generated
   // id, so without the bound key the content is looked up by element.
@@ -448,8 +449,8 @@ function createPopup<
     payload: preset.payload?.(store, (payload, details) =>
       change("payload", payload, details)
     ),
-    change: (open, details) =>
-      change("open", open, { ...details, ...rules?.details?.() }),
+    change: (open, details, beforeWrite) =>
+      change("open", open, { ...details, ...rules?.details?.() }, beforeWrite),
     onDestroy: context.onDestroy,
     // Read on every close, once the rules exist.
     get returnFocus() {

@@ -564,26 +564,29 @@ function menuApiBody(
           pendingFocus = (request.focus as Focus | undefined) ?? "first"
           runPendingFocus()?.focus({ preventScroll: true })
         },
-        // Submenus close first, so one that refuses keeps its parent open. One
-        // closing with its parent moves focus to its trigger item: a portalled
-        // submenu isn't inside the parent, which then wouldn't return focus.
+        // Ask the parent first, but close the child before its parent writes.
+        // A portalled child's focus has to return inside before the parent closes.
         close({ reason, event }, close) {
-          const child = openChild()
-          if (
-            child &&
-            !withSource(changeSource(reason, event), () =>
-              closes(child, "parent-close")
-            )
-          ) {
-            return
-          }
-          const el = popup.element()
-          const active = el && activeElement(el.ownerDocument)
-          const held =
-            reason === "parent-close" &&
-            !!active &&
-            composedContains(el, active)
-          if (close() && held) {
+          let held = false
+          const closed = close(() => {
+            const child = openChild()
+            if (
+              child &&
+              !withSource(changeSource(reason, event), () =>
+                closes(child, "parent-close")
+              )
+            ) {
+              return false
+            }
+            const el = popup.element()
+            const active = el && activeElement(el.ownerDocument)
+            held =
+              reason === "parent-close" &&
+              !!active &&
+              composedContains(el, active)
+            return true
+          })
+          if (closed && held) {
             focusTriggerItem()
           }
         },
